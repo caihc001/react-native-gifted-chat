@@ -8,13 +8,14 @@ import {
 } from 'react-native';
 
 import ActionSheet from '@expo/react-native-action-sheet';
-import moment from 'moment/min/moment-with-locales.min';
+import moment from 'moment';
 import uuid from 'uuid';
 
 import * as utils from './utils';
 import Actions from './Actions';
 import Avatar from './Avatar';
 import Bubble from './Bubble';
+import SystemMessage from "./SystemMessage";;
 import MessageImage from './MessageImage';
 import MessageText from './MessageText';
 import Composer from './Composer';
@@ -116,14 +117,10 @@ class GiftedChat extends React.Component {
     const { messages, text } = nextProps;
     this.setMessages(messages || []);
     this.setTextFromProp(text);
-    
-    if(this.props.minInputToolbarHeight !== nextProps.minInputToolbarHeight) {
-      let inputToolbarHeight = this.state.composerHeight + (nextProps.minInputToolbarHeight - MIN_COMPOSER_HEIGHT);
 
-      const newMessagesContainerHeight = this.getMaxHeight() - inputToolbarHeight - this.getKeyboardHeight() + this.getBottomOffset();
-      this.setState({
-        messagesContainerHeight: this.prepareMessagesContainerHeight(newMessagesContainerHeight),
-      });
+    if (nextProps.minInputToolbarHeight !== this.props.minInputToolbarHeight) {
+      const newMessagesContainerHeight = this.getMessagesContainerHeightWithKeyboard(this.state.composerHeight, nextProps);
+      this.updateMessageContainerHeight(newMessagesContainerHeight)
     }
   }
 
@@ -178,7 +175,7 @@ class GiftedChat extends React.Component {
   }
 
   getKeyboardHeight() {
-    if (Platform.OS === 'android') {
+    if (Platform.OS === 'android' && !this.props.forceGetKeyboardHeight) {
       // For android: on-screen keyboard resized main container and has own height.
       // @see https://developer.android.com/training/keyboard-input/visibility.html
       // So for calculate the messages container height ignore keyboard height.
@@ -224,26 +221,26 @@ class GiftedChat extends React.Component {
 
   // TODO
   // setMinInputToolbarHeight
-  getMinInputToolbarHeight() {
-    return this.props.minInputToolbarHeight;
+  getMinInputToolbarHeight(props) {
+    return props.minInputToolbarHeight;
   }
 
-  calculateInputToolbarHeight(composerHeight) {
-    return composerHeight + (this.getMinInputToolbarHeight() - MIN_COMPOSER_HEIGHT);
+  calculateInputToolbarHeight(composerHeight, props) {
+    return composerHeight + (this.getMinInputToolbarHeight(props) - MIN_COMPOSER_HEIGHT);
   }
 
   /**
    * Returns the height, based on current window size, without taking the keyboard into account.
    */
-  getBasicMessagesContainerHeight(composerHeight = this.state.composerHeight) {
-    return this.getMaxHeight() - this.calculateInputToolbarHeight(composerHeight);
+  getBasicMessagesContainerHeight(composerHeight = this.state.composerHeight, props = this.props) {
+    return this.getMaxHeight() - this.calculateInputToolbarHeight(composerHeight, props);
   }
 
   /**
    * Returns the height, based on current window size, taking the keyboard into account.
    */
-  getMessagesContainerHeightWithKeyboard(composerHeight = this.state.composerHeight) {
-    return this.getBasicMessagesContainerHeight(composerHeight) - this.getKeyboardHeight() + this.getBottomOffset();
+  getMessagesContainerHeightWithKeyboard(composerHeight = this.state.composerHeight, props = this.props) {
+    return this.getBasicMessagesContainerHeight(composerHeight, props) - this.getKeyboardHeight() + this.getBottomOffset();
   }
 
   prepareMessagesContainerHeight(value) {
@@ -253,21 +250,25 @@ class GiftedChat extends React.Component {
     return value;
   }
 
+  updateMessageContainerHeight (height) {
+    if (this.props.isAnimated === true) {
+      Animated.timing(this.state.messagesContainerHeight, {
+        toValue: height,
+        duration: 210,
+      }).start();
+    } else {
+      this.setState({
+        messagesContainerHeight: height,
+      });
+    }
+  }
+
   onKeyboardWillShow(e) {
     this.setIsTypingDisabled(true);
     this.setKeyboardHeight(e.endCoordinates ? e.endCoordinates.height : e.end.height);
     this.setBottomOffset(this.props.bottomOffset);
     const newMessagesContainerHeight = this.getMessagesContainerHeightWithKeyboard();
-    if (this.props.isAnimated === true) {
-      Animated.timing(this.state.messagesContainerHeight, {
-        toValue: newMessagesContainerHeight,
-        duration: 210,
-      }).start();
-    } else {
-      this.setState({
-        messagesContainerHeight: newMessagesContainerHeight,
-      });
-    }
+    this.updateMessageContainerHeight(newMessagesContainerHeight)
   }
 
   onKeyboardWillHide() {
@@ -275,16 +276,7 @@ class GiftedChat extends React.Component {
     this.setKeyboardHeight(0);
     this.setBottomOffset(0);
     const newMessagesContainerHeight = this.getBasicMessagesContainerHeight();
-    if (this.props.isAnimated === true) {
-      Animated.timing(this.state.messagesContainerHeight, {
-        toValue: newMessagesContainerHeight,
-        duration: 210,
-      }).start();
-    } else {
-      this.setState({
-        messagesContainerHeight: newMessagesContainerHeight,
-      });
-    }
+    this.updateMessageContainerHeight(newMessagesContainerHeight)
   }
 
   onKeyboardDidShow(e) {
@@ -537,6 +529,7 @@ GiftedChat.defaultProps = {
   onPressAvatar: null,
   renderAvatarOnTop: false,
   renderBubble: null,
+  renderSystemMessage: null,
   onLongPress: null,
   renderMessage: null,
   renderMessageText: null,
@@ -563,6 +556,7 @@ GiftedChat.defaultProps = {
   }),
   onInputTextChanged: null,
   maxInputLength: null,
+  forceGetKeyboardHeight: false,
 };
 
 GiftedChat.propTypes = {
@@ -586,6 +580,7 @@ GiftedChat.propTypes = {
   onPressAvatar: PropTypes.func,
   renderAvatarOnTop: PropTypes.bool,
   renderBubble: PropTypes.func,
+  renderSystemMessage: PropTypes.func,
   onLongPress: PropTypes.func,
   renderMessage: PropTypes.func,
   renderMessageText: PropTypes.func,
@@ -609,6 +604,7 @@ GiftedChat.propTypes = {
   keyboardShouldPersistTaps: PropTypes.oneOf(['always', 'never', 'handled']),
   onInputTextChanged: PropTypes.func,
   maxInputLength: PropTypes.number,
+  forceGetKeyboardHeight: PropTypes.bool,
 };
 
 export {
@@ -616,6 +612,7 @@ export {
   Actions,
   Avatar,
   Bubble,
+  SystemMessage,
   MessageImage,
   MessageText,
   Composer,
