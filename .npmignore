@@ -1,3 +1,11 @@
 example/
-TODO.md
+example-expo/
+example-slack-message/
 screenshots/
+.babelrc
+tests/
+README.md
+ISSUE_TEMPLATE.md
+circle.yml
+codecov.yml
+index.d.ts
