@@ -112,6 +112,7 @@ export default class MessageContainer extends React.PureComponent {
           {...this.props.invertibleScrollViewProps}
           ListFooterComponent={this.renderHeaderWrapper}
         />
+        {this.renderLoadEarlier()}
       </View>
     );
   }
