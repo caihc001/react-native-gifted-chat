@@ -36,13 +36,13 @@ export default class MessageContainer extends React.PureComponent {
     return null;
   }
 
-  renderLoadEarlier() {
+  renderLoadEarlier(recent) {
     if (this.props.loadEarlier === true) {
       const loadEarlierProps = {
         ...this.props,
       };
       if (this.props.renderLoadEarlier) {
-        return this.props.renderLoadEarlier(loadEarlierProps);
+        return this.props.renderLoadEarlier(recent);
       }
       return <LoadEarlier {...loadEarlierProps} />;
     }
@@ -86,7 +86,7 @@ export default class MessageContainer extends React.PureComponent {
   }
 
   renderHeaderWrapper() {
-    return <View style={styles.headerWrapper}>{this.renderLoadEarlier()}</View>;
+    return <View style={styles.headerWrapper}>{this.renderLoadEarlier(false)}</View>;
   }
 
   render() {
@@ -112,6 +112,7 @@ export default class MessageContainer extends React.PureComponent {
           {...this.props.invertibleScrollViewProps}
           ListFooterComponent={this.renderHeaderWrapper}
         />
+        {this.renderLoadEarlier(false)}
       </View>
     );
   }
